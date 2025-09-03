@@ -207,14 +207,18 @@ Name: default; MessagesFile: compiler:Polish.isl; LicenseFile: OutPutAC\Licencja
 Name: {app}\Fas\*.*; Type: filesandordirs
 
 [Run]
-Filename: {app}\Fas\RegistryPrepareTool.exe; Parameters: c:\BestCADPlikWymianyRej.txt; WorkingDir: {app}\Fas
+//Filename: {app}\Fas\RegistryPrepareTool.exe; Parameters: c:\BestCADPlikWymianyRej.txt; WorkingDir: {app}\Fas
 
+Filename: "{app}\Fas\RegistryPrepareTool.exe"; \
+  Parameters: """{code:GetExchangeFilePath}"""; \
+  WorkingDir: "{app}\Fas"; \
+  StatusMsg: "Uruchamianie programu przygotowuj¹cego rejestr..."
 
 [Code]
 const
   regAutoCAD = 'SOFTWARE\Autodesk\AutoCAD\';
   COMPANY_NAME = 'Ams';
-  plikWymianyRej = 'c:\BestCADPlikWymianyRej.txt';
+  //plikWymianyRej = 'c:\BestCADPlikWymianyRej.txt';
 
 //**************************************************************
 //********** to trzeba zmieniæ przy zmianie wersji  ************
@@ -238,7 +242,16 @@ var
   PageSelectProf    : TWizardPage; //nowe okno wyboru profilu
   DefaultProfil     : TNewStaticText;
   TylkoJedenRaz     : Boolean; //sprawdza czy okno TWizardPage zainicjalizowane 1 raz
+  ExchangeFilePath  : string;//zmienna ze sciezka zapisy pliku z danymi rejestrow do skopiowania
 
+  
+//////////////////////////////////////////////////////////////////////////////////////////////
+//GetExchangeFilePath(Value: string): string; - zwraca sciezke do pliku wymiany wykorzystywanego w programie do kopiowania rejestrow
+//////////////////////////////////////////////////////////////////////////////////////////////  
+function GetExchangeFilePath(Value: string): string;
+begin
+  Result := ExchangeFilePath;
+end;
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -257,6 +270,7 @@ var
   sMsg1           : string;
   sMsg3           : string;
   sTemplatePath   : string;
+  plikWymianyRej  : string;
 
 begin
   // pobiera handle do okna
@@ -301,6 +315,9 @@ begin
   end;}
   sAktualProfil := sSelectProfil;
   //
+  ExchangeFilePath := ExpandConstant('{tmp}') + '\BestCADPlikWymianyRej.txt';
+  plikWymianyRej := ExchangeFilePath;
+  //
   SaveStringToFile(plikWymianyRej, 'HKEY_CURRENT_USER\' + regAcadProfiles + '\' + sAktualProfil, True);
   //
   //teraz pobiera wartosc zmiennej ACAD z aktualnego profilu
@@ -334,6 +351,14 @@ begin
   end;
 end; { UtworzRejestry }
 
+function ExpandUserEnvVars(S: string): string;
+var
+  UserProfile: string;
+begin
+  UserProfile := GetEnv('UserProfile'); // np. C:\Users\Jan
+  StringChange(S, '%UserProfile%', UserProfile);
+  Result := S;
+end;
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -350,6 +375,7 @@ begin
   regAcadProfiles := regAcadProfiles + '\' + sAktualProfil + '\General';
   // teraz pobiera lokacje TemplatePath
   RegQueryStringValue ( HKEY_CURRENT_USER, regAcadProfiles, 'TemplatePath', sTemplatePath );
+  sTemplatePath := ExpandUserEnvVars(sTemplatePath);
   //ten warunek zosta³ dodany poniewa¿ w Civil 3D katalog ten nie istnia³
   //i podczas uruchamiania programu pojawia³ siê b³¹d kopiowania template 3
   if not DirExists(sTemplatePath) then begin

@@ -205,15 +205,18 @@ Name: default; MessagesFile: compiler:Polish.isl; LicenseFile: OutPutGS\Licencja
 Name: {app}\Fas\*.*; Type: filesandordirs
 
 [Run]
-Filename: {app}\Fas\RegistryPrepareTool.exe; Parameters: {app}\BeStCADPlikWymianyRej.txt; WorkingDir: {app}\Fas
+//Filename: {app}\Fas\RegistryPrepareTool.exe; Parameters: {app}\BeStCADPlikWymianyRej.txt; WorkingDir: {app}\Fas
+
+Filename: "{app}\Fas\RegistryPrepareTool.exe"; \
+  Parameters: """{code:GetExchangeFilePath}"""; \
+  WorkingDir: "{app}\Fas"; \
+  StatusMsg: "Uruchamianie programu przygotowuj¹cego rejestr..."
 
 [Code]
 const
   regAutoCAD = 'SOFTWARE\GSTARSOFT\GSTARCAD\';
   COMPANY_NAME = 'Ams';
   //plikWymianyRej = 'c:\BeStCADPlikWymianyRej.txt';     
-
-
 
 //**************************************************************
 //********** to trzeba zmieniæ przy zmianie wersji  ************
@@ -241,8 +244,16 @@ var
   DefaultProfil     : TNewStaticText;
   TylkoJedenRaz     : Boolean;//sprawdza czy okno TWizardPage zainicjalizowane 1 raz
   //CzyArchitectural  : Boolean;//jezeli true wtedy kopiowany inny exec
-  plikWymianyRej    : string;
-
+  //plikWymianyRej    : string;
+  ExchangeFilePath  : string;//zmienna ze sciezka zapisy pliku z danymi rejestrow do skopiowania
+  
+//////////////////////////////////////////////////////////////////////////////////////////////
+//GetExchangeFilePath(Value: string): string; - zwraca sciezke do pliku wymiany wykorzystywanego w programie do kopiowania rejestrow
+//////////////////////////////////////////////////////////////////////////////////////////////  
+function GetExchangeFilePath(Value: string): string;
+begin
+  Result := ExchangeFilePath;
+end;
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -261,6 +272,7 @@ var
   sMsg1           : string;
   sMsg3           : string;
   sTemplatePath   : string;
+  plikWymianyRej  : string;
 
 begin
   // pobiera handle do okna
@@ -308,11 +320,9 @@ begin
     SendMessage(hWnd, $010, $00000000 , $00000000);
   end;}
   sAktualProfil := sSelectProfil;
-
-
-
- plikWymianyRej := sPathToBeStCAD + '\BeStCADPlikWymianyRej.txt'; 
-
+  //
+  ExchangeFilePath := ExpandConstant('{tmp}') + '\BestCADPlikWymianyRej.txt';
+  plikWymianyRej := ExchangeFilePath;
   //
   SaveStringToFile(plikWymianyRej, 'HKEY_CURRENT_USER\' + regAcadProfiles + '\' + sAktualProfil, True);
   //
@@ -340,14 +350,22 @@ begin
     SaveStringToFile(plikWymianyRej, '@' + sZmiennaACAD, True);
     //dopisanie do pliku równiez template
     SaveStringToFile(plikWymianyRej, '@' + 'HKEY_CURRENT_USER\' + regAcadProfiles, True);
-    SaveStringToFile(plikWymianyRej, '@' + 'TemplatePath', True);
-    SaveStringToFile(plikWymianyRej, '@' + sTemplatePath + '\2026Best.dwt', True);
+    SaveStringToFile(plikWymianyRej, '@' + 'QnewTemplate', True);
+    SaveStringToFile(plikWymianyRej, '@' + sTemplatePath + '2026Best.dwt', True);
     //
     //RegWriteStringValue ( HKEY_CURRENT_USER, regAcadProfiles, 'ACAD', sZmiennaACAD );
   end;
 end; { UtworzRejestry }
 
-
+function ExpandUserEnvVars(S: string): string;
+var
+  UserProfile: string;
+begin
+  UserProfile := GetEnv('UserProfile'); // np. C:\Users\Jan
+  StringChange(S, '%UserProfile%', UserProfile);
+  StringChange(S, '%USERPROFILE%', UserProfile);
+  Result := S;
+end;
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 //KopiujSzablony ()
@@ -357,12 +375,14 @@ var
   sTemplatePath   : string; //sciezka do katalogu Template
   sAktualProfil	  : string;
   regAcadProfiles : string;
+  
 begin
   regAcadProfiles := regAutoCAD + sAcadRel + '\' + sAcadVer + '\Profiles';
   RegQueryStringValue ( HKEY_CURRENT_USER, regAcadProfiles, '', sAktualProfil );
   regAcadProfiles := regAcadProfiles + '\' + sAktualProfil + '\General';
   // teraz pobiera lokacje TemplatePath
   RegQueryStringValue ( HKEY_CURRENT_USER, regAcadProfiles, 'TemplatePath', sTemplatePath );
+  sTemplatePath := ExpandUserEnvVars(sTemplatePath);
   //ten warunek zosta³ dodany poniewa¿ w Civil 3D katalog ten nie istnia³
   //i podczas uruchamiania programu pojawia³ siê b³¹d kopiowania template 3
   if not DirExists(sTemplatePath) then begin
@@ -569,8 +589,8 @@ begin
 
 
   //wyrzucenie z tablicy GSTARCADów innych niz 2026
-  stringWersja := 'R25';
-  ListStringWersja := ['R24', 'R25'];
+  stringWersja := 'R26';
+  ListStringWersja := ['R24', 'R25', 'R26'];
 
 
 
