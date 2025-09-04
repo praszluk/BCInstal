@@ -65,7 +65,7 @@ Source: BeStCAD\Pomoc\07-Modu³Drogi\*.*; DestDir: {app}\Pomoc\07-Modu³Drogi
 Source: BeStCAD\Pomoc\08-Modu³Sprê¿enie2\*.*; DestDir: {app}\Pomoc\08-Modu³Sprê¿enie2
 Source: BeStCAD\Pomoc\09-Modu³Geotechnika\*.*; DestDir: {app}\Pomoc\09-Modu³Geotechnika
 ;; links from BeStCAD\Lib
-Source: BeStCAD\Lib\Most\Przycz\*.*; DestDir: {app}\Lib\Most\Przycz
+Source: BeStCAD\Lib\Most\Przycz\*.*; DestDir: {app}\Lib\Most\Przycz 
 Source: BeStCAD\Lib\Most\TraNiw\*.*; DestDir: {app}\Lib\Most\TraNiw
 Source: BeStCAD\Lib\SPR\*.*; DestDir: {app}\Lib\SPR
 Source: BeStCAD\Lib\Symb\*.*; DestDir: {app}\Lib\Symb

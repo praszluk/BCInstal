@@ -264,7 +264,7 @@ var
   sAktualProfil   : string; //aktualny profil Acada
   sZmiennaACAD    : string; //wartosc zmiennej ACAD support
   sDaneAplik      : string;
-  sKey            : string; //
+  sKey            : string; // 
   i               : Integer;
   sProductName	  : string;
   sMsg1           : string;

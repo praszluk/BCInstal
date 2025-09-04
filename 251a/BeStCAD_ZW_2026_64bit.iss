@@ -395,7 +395,7 @@ procedure KopiujSzablony ();
 var
   sTemplatePath   : string; //sciezka do katalogu Template
   sAktualProfil	  : string;
-  regAcadProfiles : string;
+  regAcadProfiles : string; 
 begin
   regAcadProfiles := regAutoCAD + sAcadRel + '\' + sAcadVer + '\Profiles';
   RegQueryStringValue ( HKEY_CURRENT_USER, regAcadProfiles, '', sAktualProfil );
