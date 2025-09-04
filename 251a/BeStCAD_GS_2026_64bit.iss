@@ -467,7 +467,9 @@ end;
 //end;
 
 
-
+//////////////////////////////////////////////////////////////////////////////////////////////
+//ZmienNazweFolderuWDocumentsAndSettings (); - metoda dodaje wyskrzyknik do nazwy folderu jezeli jest ona w appdata
+//////////////////////////////////////////////////////////////////////////////////////////////
 procedure ZmienNazweFolderuWDocumentsAndSettings ();
 var
 	sDaneAplik, sNowaNazwaFolderu : string;
@@ -567,6 +569,25 @@ begin
   end;
 end;
 
+function SubKeyExists(RootKey: Integer; Path: String; SubKeyName: String): Boolean;
+var
+  SubKeys: TArrayOfString;
+  I: Integer;
+begin
+  Result := False;
+  if RegGetSubkeyNames(RootKey, Path, SubKeys) then
+  begin
+    for I := 0 to GetArrayLength(SubKeys) - 1 do
+    begin
+      if CompareText(SubKeys[I], SubKeyName) = 0 then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  end;
+end;
+
 //////////////////////////////////////////////////////////////////////////////////////////////
 //GetRegAcads () - zwraca rejestry Acadow
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -583,17 +604,9 @@ var
 begin
   //wyciagniecie danych z rejestru na poziomie 2026
   RegGetSubkeyNames(HKEY_LOCAL_MACHINE, regAutoCAD, tabAcadMainRegs1);
-
-
-
-
-
   //wyrzucenie z tablicy GSTARCADów innych niz 2026
   stringWersja := 'R26';
   ListStringWersja := ['R24', 'R25', 'R26'];
-
-
-
   nMainRegs1:=GetArrayLength(tabAcadMainRegs1);
   j:=0;
   //for i:=0 to (nMainRegs1-1) do begin
@@ -652,7 +665,10 @@ begin
     nNewRegsCorrect:=0;
     for j:=0 to (nNewRegs-1) do begin
       //if RegValueExists(HKEY_LOCAL_MACHINE, regAutoCADTym + stringWersja + '\' + tabNewRegs[j], 'Location')then
-      if RegValueExists(HKEY_LOCAL_MACHINE, regAutoCADTym + tabAcadNewMainRegs[i] + '\' + tabNewRegs[j], 'Location')then
+      //if RegValueExists(HKEY_LOCAL_MACHINE, regAutoCADTym + tabAcadNewMainRegs[i] + '\' + tabNewRegs[j], 'Location')then
+      if RegValueExists(HKEY_LOCAL_MACHINE, regAutoCADTym + tabAcadNewMainRegs[i] + '\' + tabNewRegs[j], 'ProductName') and 
+        RegValueExists(HKEY_LOCAL_MACHINE, regAutoCADTym + tabAcadNewMainRegs[i] + '\' + tabNewRegs[j], 'LOCATION') and
+        SubKeyExists(HKEY_CURRENT_USER, regAutoCADTym + tabAcadNewMainRegs[i], tabNewRegs[j]) then
       begin
         //regAutoCAD := regAutoCADTym;
         nNewRegsCorrect:=nNewRegsCorrect + 1;
@@ -669,15 +685,21 @@ begin
     
     nNewRegsCorrect:=0
     for j:=0 to (nNewRegs-1) do begin
-      if RegQueryStringValue (HKEY_LOCAL_MACHINE, strSubKeysAcad + '\' + tabNewRegs[j], 'Location', sLocation) then
+      //if RegQueryStringValue (HKEY_LOCAL_MACHINE, strSubKeysAcad + '\' + tabNewRegs[j], 'Location', sLocation) then
+      if RegValueExists(HKEY_LOCAL_MACHINE, regAutoCADTym + tabAcadNewMainRegs[i] + '\' + tabNewRegs[j], 'ProductName') and 
+        RegValueExists(HKEY_LOCAL_MACHINE, regAutoCADTym + tabAcadNewMainRegs[i] + '\' + tabNewRegs[j], 'LOCATION') and
+        SubKeyExists(HKEY_CURRENT_USER, regAutoCADTym + tabAcadNewMainRegs[i], tabNewRegs[j]) then
       begin
-        //CzyArchitectural := CzyArchitecturalTym;
-        //tabAcadRegs[nNewRegsCorrect+n]:=tabAcadNewMainRegs[i] + '\' + tabNewRegs[j];
-        //tabAcadRegs[nNewRegsCorrect+n]:=stringWersja + '\' + tabNewRegs[j];
-        tabAcadRegs[nNewRegsCorrect+n]:=tabAcadNewMainRegs[i] + '\' + tabNewRegs[j];
-        tabAcadNames[nNewRegsCorrect+n]:=sLocation + tabNewRegs[j];
-        //tabAcadCzyArchitectural[nNewRegsCorrect+n]:=CzyArchitectural;
-        nNewRegsCorrect:=nNewRegsCorrect + 1;
+        if RegQueryStringValue (HKEY_LOCAL_MACHINE, strSubKeysAcad + '\' + tabNewRegs[j], 'ProductName', sLocation) then
+        begin
+          //CzyArchitectural := CzyArchitecturalTym;
+          //tabAcadRegs[nNewRegsCorrect+n]:=tabAcadNewMainRegs[i] + '\' + tabNewRegs[j];
+          //tabAcadRegs[nNewRegsCorrect+n]:=stringWersja + '\' + tabNewRegs[j];
+          tabAcadRegs[nNewRegsCorrect+n]:=tabAcadNewMainRegs[i] + '\' + tabNewRegs[j];
+          tabAcadNames[nNewRegsCorrect+n]:=sLocation + ' - ' + tabNewRegs[j];
+          //tabAcadCzyArchitectural[nNewRegsCorrect+n]:=CzyArchitectural;
+          nNewRegsCorrect:=nNewRegsCorrect + 1;
+        end;
       end;
     end;
     
@@ -698,7 +720,7 @@ begin
   NazwaProfilu := AnsiUppercase(NazwaProfilu);
   WersjaProf := Copy(NazwaProfilu, 8, 3);
   IntNumerWersji := StrToIntDef(WersjaProf, 0);
-  if ( ( Pos('BESTCAD', NazwaProfilu) > 0 ) and (IntNumerWersji <> 0) )then
+  if ( ( Pos('BESTGS', NazwaProfilu) > 0 ) and (IntNumerWersji <> 0) )then
   begin
     wynik := False;
   end;
@@ -734,10 +756,11 @@ begin
     SendMessage(hWnd, $010, $00000000 , $00000000);
   end;
 
+  //liczymy ile w danym autocadzie jest profili, nie liczac profili bestcad
   k := 0;
   for i:=0 to ( GetArrayLength(AllProfilesAcad) - 1 ) do
   begin
-    if (Length(AllProfilesAcad[i]) = 10) then
+    if (Length(AllProfilesAcad[i]) = 9) then
     begin
       if (CzyNieZawieraBest(AllProfilesAcad[i])) then
       begin
@@ -751,10 +774,11 @@ begin
   
   if k = 0 then
   begin
-    Blad1 := 'Brak profili lub utwórz inny profil niz BESTCAD';
+    Blad1 := 'Brak profili lub tylko profile BeStCAD. Utwórz inny profil ni¿ BESTCAD i ponownie przeprowadŸ instalacjê.';
     MsgBox( Blad1, mbError, MB_OK );
     SendMessage(hWnd, $010, $00000000 , $00000000);
   end;
+  //tworzymy nowa liste profili pomijajacych profile 10 znakowe zaczynajace sie na BESTCAD
   SetArrayLength(ProfileBezBest, k);
   k := 0;
   for i:=0 to ( GetArrayLength(AllProfilesAcad) - 1 ) do
@@ -764,7 +788,7 @@ begin
       ProfileBezBest[k] := AllProfilesAcad[i];
       k := k + 1;
     end;}
-    if (Length(AllProfilesAcad[i]) = 10) then
+    if (Length(AllProfilesAcad[i]) = 9) then
     begin
       if (CzyNieZawieraBest(AllProfilesAcad[i])) then
       begin
@@ -794,6 +818,51 @@ begin
 end; { ListBoxProfOnClick }
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////
+//GetDefaultProfileIndex(var tabProfilesAcad: TArrayOfString): Integer - funkcja zwraca numer profilu domyslnego
+//////////////////////////////////////////////////////////////////////////////////////////////
+function GetDefaultProfileIndex(var tabProfilesAcad: TArrayOfString): Integer;
+var
+  i: Integer;
+begin
+  Result := -1;
+
+  // 1. Szukamy <<Profil bez nazwy>>
+  for i := 0 to GetArrayLength(tabProfilesAcad)-1 do
+    if tabProfilesAcad[i] = '<<Profil bez nazwy>>' then
+    begin
+      Result := i;
+      Exit;
+    end;
+
+  // 2. Szukamy <<Unnamed Profile>>
+  for i := 0 to GetArrayLength(tabProfilesAcad)-1 do
+    if tabProfilesAcad[i] = '<<Unnamed Profile>>' then
+    begin
+      Result := i;
+      Exit;
+    end;
+
+  // 3. Szukamy <<AUTOCAD>>
+  for i := 0 to GetArrayLength(tabProfilesAcad)-1 do
+    if tabProfilesAcad[i] = '<<AUTOCAD>>' then
+    begin
+      Result := i;
+      Exit;
+    end;
+
+  // 4. Szukamy Default
+  for i := 0 to GetArrayLength(tabProfilesAcad)-1 do
+    if tabProfilesAcad[i] = 'Default' then
+    begin
+      Result := i;
+      Exit;
+    end;
+
+  // 5. Jeœli nic nie znaleziono › zwracamy 0
+  if Result = -1 then
+    Result := 0;
+end;
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 //OknoProfiluAcadaa() - wyswietla i wypelnia okno z profilami Acada
@@ -809,17 +878,17 @@ begin
   ListBoxProf.OnClick := @ListBoxProfOnClick;
   n := GetArrayLength(tabProfilesAcad) - 1;
 
-  iProfilDefault:=0;
-
+  //iProfilDefault:=0;
   for i:=0 to n do 
     begin
       ListBoxProf.Items.Add(tabProfilesAcad[i]);
-      if (tabProfilesAcad[i] = 'Default') then begin
-        iProfilDefault:=i;
-      end
+      //if (tabProfilesAcad[i] = 'Default') then begin
+      //  iProfilDefault:=i;
+      //end
     end;
 
   //ListBoxProf.ItemIndex := 0;
+  iProfilDefault:= GetDefaultProfileIndex(tabProfilesAcad);
   ListBoxProf.ItemIndex := iProfilDefault;
   
   DefaultProfil := TNewStaticText.Create(PageSelectProf);
@@ -835,7 +904,7 @@ end; { OknoProfiluAcada }
 //ListBoxOnClick(Sender: TObject) - obs³uga zdarzenia wyboru wersji Acada
 //////////////////////////////////////////////////////////////////////////////////////////////
 procedure ListBoxOnClick(Sender: TObject);
-var Index : integer;
+var Index, iProfilDefault : integer;
 begin
   Index := ListBox.ItemIndex;
   //CzyArchitectural := tabAcadCzyArchitectural[Index];
@@ -850,8 +919,10 @@ begin
   
   sSelectedAcad := tabAcadRegs[Index];
   tabProfilesAcad := GetRegProfilesAcad(sSelectedAcad);
+  iProfilDefault:= GetDefaultProfileIndex(tabProfilesAcad);
+  sSelectProfil := tabProfilesAcad[iProfilDefault];
   OknoProfiluAcada();
-  sSelectProfil := tabProfilesAcad[0];
+  //sSelectProfil := tabProfilesAcad[0];
 end; { ListBoxOnClick }
 
 
@@ -891,7 +962,7 @@ end;
 //////////////////////////////////////////////////////////////////////////////////////////////
 function ScriptDlgPages (CurPage: Integer; BackClicked: Boolean): Boolean;
 var
-  nAcadRegs: Integer;
+  nAcadRegs, iProfilDefault: Integer;
 begin
   Result := True;
   //pomiedzy wpInfoBefore a wpSelectDir sprawdzic jakie sa Acady i zapytac o wersje uzytkownika
@@ -917,7 +988,9 @@ begin
           end;
           tabProfilesAcad := GetRegProfilesAcad(sSelectedAcad);
           OknoProfiluAcada();
-          sSelectProfil := tabProfilesAcad[0];
+          //sSelectProfil := tabProfilesAcad[0];
+          iProfilDefault:= GetDefaultProfileIndex(tabProfilesAcad);
+          sSelectProfil := tabProfilesAcad[iProfilDefault];
         end;
       else
         begin
@@ -937,7 +1010,9 @@ begin
           OknoWersjiAcada();
           tabProfilesAcad := GetRegProfilesAcad(sSelectedAcad);
           OknoProfiluAcada();
-          sSelectProfil := tabProfilesAcad[0];
+          //sSelectProfil := tabProfilesAcad[0];
+          iProfilDefault:= GetDefaultProfileIndex(tabProfilesAcad);
+          sSelectProfil := tabProfilesAcad[iProfilDefault];
         end;
     end;
   end;
