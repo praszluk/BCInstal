@@ -241,6 +241,7 @@ var
   PageSelectAcad    : TWizardPage; //nowe okno wyboru Autocada
   PageSelectProf    : TWizardPage; //nowe okno wyboru profilu
   DefaultProfil     : TNewStaticText;
+  Uwaggga            : TNewStaticText;
   TylkoJedenRaz     : Boolean; //sprawdza czy okno TWizardPage zainicjalizowane 1 raz
   ExchangeFilePath  : string;//zmienna ze sciezka zapisy pliku z danymi rejestrow do skopiowania
 
@@ -547,6 +548,60 @@ begin
   end;
 end;
 
+function CzyNieZawieraBest(NazwaProfilu: string): Boolean;
+var
+  wynik: Boolean;
+  WersjaProf: string;
+  IntNumerWersji: Integer;
+begin
+  wynik := True;
+  IntNumerWersji := 0;
+  NazwaProfilu := AnsiUppercase(NazwaProfilu);
+  WersjaProf := Copy(NazwaProfilu, 8, 3);
+  IntNumerWersji := StrToIntDef(WersjaProf, 0);
+  if ( ( Pos('BESTCAD', NazwaProfilu) > 0 ) and (IntNumerWersji <> 0) )then
+  begin
+    wynik := False;
+  end;
+  Result := wynik;
+end;
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+//CheckAcadProfiles(PathToAcad: string; Blad: string; hWnd: Integer): Boolean; - metoda sprawdza
+//////////////////////////////////////////////////////////////////////////////////////////////
+function CheckAcadProfiles(PathToAcad: string; Blad: string; hWnd: Integer): Boolean;
+var
+  AllProfilesAcad: TArrayOfString;
+  iii, kkk: Integer;
+begin
+  Result := False;
+
+  RegGetSubkeyNames(HKEY_CURRENT_USER, PathToAcad, AllProfilesAcad);
+
+  //if (not RegGetSubkeyNames(HKEY_CURRENT_USER, PathToAcad, AllProfilesAcad)) then
+  //begin
+  //  MsgBox(Blad, mbError, MB_OK);
+  //  SendMessage(hWnd, $010, $00000000, $00000000);
+  //  Exit;
+  //end;
+
+  // liczymy ile w danym AutoCADzie jest profili, nie licz¹c profili BestCAD
+  kkk := 0;
+  for iii := 0 to (GetArrayLength(AllProfilesAcad) - 1) do
+  begin
+    if (Length(AllProfilesAcad[iii]) = 10) then
+    begin
+      if (CzyNieZawieraBest(AllProfilesAcad[iii])) then
+        kkk := kkk + 1;
+    end
+    else
+      kkk := kkk + 1;
+  end;
+
+  // Zwróæ True jeœli istniej¹ jakieœ poprawne profile
+  Result := (kkk > 0);
+end;
+
 //////////////////////////////////////////////////////////////////////////////////////////////
 //GetRegAcads () - zwraca rejestry Acadow
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -594,10 +649,16 @@ begin
     for j:=0 to (nNewRegs-1) do begin
       if RegValueExists(HKEY_LOCAL_MACHINE, regAutoCAD + tabAcadNewMainRegs[i] + '\' + tabNewRegs[j], 'ProductName') and 
           RegValueExists(HKEY_LOCAL_MACHINE, regAutoCAD + tabAcadNewMainRegs[i] + '\' + tabNewRegs[j], 'Language') and
-          SubKeyExists(HKEY_CURRENT_USER, regAutoCAD + tabAcadNewMainRegs[i], tabNewRegs[j]) then
+          SubKeyExists(HKEY_CURRENT_USER, regAutoCAD + tabAcadNewMainRegs[i], tabNewRegs[j]) and
+          CheckAcadProfiles(regAutoCAD + tabAcadNewMainRegs[i] + '\' + tabNewRegs[j] + '\Profiles', 'Brak profili w rejestrze', hWnd) then
       begin
         nNewRegsCorrect:=nNewRegsCorrect + 1;
       end;
+      //else
+      //begin
+      //  MsgBox( 'pominieto cada przy zliczaniu' + regAutoCAD + tabAcadNewMainRegs[i] + '\' + tabNewRegs[j], mbError, MB_OK );
+      //  SendMessage(hWnd, $010, $00000000 , $00000000);
+      //end;
     end;
 
     //Dodaje poprawn¹ liczbê Autocadów (poprawnych kluczy) do globalnych tablic zawieraj¹cych nazwê autocada oraz sciê¿kê do jego wpisów w rejestrach
@@ -606,16 +667,22 @@ begin
     SetArrayLength(tabAcadNames, nAcadRegs);
 
 
-    nNewRegsCorrect:=0
+    nNewRegsCorrect:=0;
     for j:=0 to (nNewRegs-1) do begin
       if RegQueryStringValue (HKEY_LOCAL_MACHINE, regAutoCAD + tabAcadNewMainRegs[i] + '\' + tabNewRegs[j], 'ProductName', sProductName) and 
           RegQueryStringValue (HKEY_LOCAL_MACHINE, regAutoCAD + tabAcadNewMainRegs[i] + '\' + tabNewRegs[j], 'Language', sLanguage) and
-          SubKeyExists(HKEY_CURRENT_USER, regAutoCAD + tabAcadNewMainRegs[i], tabNewRegs[j]) then
+          SubKeyExists(HKEY_CURRENT_USER, regAutoCAD + tabAcadNewMainRegs[i], tabNewRegs[j]) and
+          CheckAcadProfiles(regAutoCAD + tabAcadNewMainRegs[i] + '\' + tabNewRegs[j] + '\Profiles', 'Brak profili w rejestrze', hWnd) then
       begin
         tabAcadRegs[nNewRegsCorrect+n]:=tabAcadNewMainRegs[i] + '\' + tabNewRegs[j];
         tabAcadNames[nNewRegsCorrect+n]:=sProductName + '  (' + sLanguage + ')';
         nNewRegsCorrect:=nNewRegsCorrect + 1;
       end;
+      //else
+      //begin
+      //  MsgBox( 'pominieto cada przy dodawaniu do listy', mbError, MB_OK );
+      //  SendMessage(hWnd, $010, $00000000 , $00000000);
+      //end;
     end;
     
     n:=nAcadRegs;
@@ -624,23 +691,7 @@ end; { GetRegAcads }
 
 
 
-function CzyNieZawieraBest(NazwaProfilu: string): Boolean;
-var
-  wynik: Boolean;
-  WersjaProf: string;
-  IntNumerWersji: Integer;
-begin
-  wynik := True;
-  IntNumerWersji := 0;
-  NazwaProfilu := AnsiUppercase(NazwaProfilu);
-  WersjaProf := Copy(NazwaProfilu, 8, 3);
-  IntNumerWersji := StrToIntDef(WersjaProf, 0);
-  if ( ( Pos('BESTCAD', NazwaProfilu) > 0 ) and (IntNumerWersji <> 0) )then
-  begin
-    wynik := False;
-  end;
-  Result := wynik;
-end;
+
 
 
 
@@ -658,7 +709,7 @@ begin
   PathToAcad := regAutoCAD + SelAcad + '\' + 'Profiles';
   Blad := 'Instalator nie mo¿e odczytaæ profili ' + sSelectedAcad + ' .' + #13 + 'Przerwano dalsz¹ instalacjê. (2)';
   
-    if ( not RegGetSubkeyNames(HKEY_CURRENT_USER, PathToAcad, AllProfilesAcad) ) then
+  if ( not RegGetSubkeyNames(HKEY_CURRENT_USER, PathToAcad, AllProfilesAcad) ) then
   begin
     MsgBox( Blad, mbError, MB_OK );
     SendMessage(hWnd, $010, $00000000 , $00000000);
@@ -836,18 +887,24 @@ procedure OknoWersjiAcada;//(var Next: Boolean);
 var
   i, n: Integer;
 begin
-
   ListBox := TListBox.Create(PageSelectAcad);
   ListBox.Width := PageSelectAcad.SurfaceWidth;
   ListBox.Parent := PageSelectAcad.Surface;
   ListBox.OnClick := @ListBoxOnClick;
   n := GetArrayLength(tabAcadNames) - 1;
-
   for i:=0 to n do ListBox.Items.Add(tabAcadNames[i]);
   ListBox.ItemIndex := 0;
+  //
+  Uwaggga := TNewStaticText.Create(PageSelectAcad);
+  Uwaggga.Top := ListBox.Top + ListBox.Height + ScaleY(8);
+  Uwaggga.Caption := 
+    'Lista zawiera tylko zainstalowane aplikacje AutoCAD, uruchomione przynajmniej' + #13#10 +  
+    'jednokrotnie na koncie u¿ytkownika Windows, zawieraj¹ce co najmniej jeden' + #13#10 + 
+    'profil inny ni¿ BeStCAD.';
+  Uwaggga.AutoSize := True;
+  Uwaggga.Parent := PageSelectAcad.Surface;
+  //
 end;
-
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 //ScriptDlgPages(CurPage: Integer; BackClicked: Boolean): Boolean;
