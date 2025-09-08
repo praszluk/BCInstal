@@ -33,8 +33,8 @@ ShowLanguageDialog=yes
 AppVersion=251a
 WizardImageFile=d:\3_Instalki\BestInstSetup\$BestLinki\251a\BeStCAD\ams_instaler1.bmp
 WizardSmallImageFile=d:\3_Instalki\BestInstSetup\$BestLinki\251a\BeStCAD\ams_instaler2.bmp
-ArchitecturesInstallIn64BitMode=x64
-ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64 arm64
+ArchitecturesAllowed=x64 arm64
 ;DisableDirPage=true
 
 [Files]
